@@ -1,0 +1,53 @@
+flowchart LR
+    User([👤 普通用户<br/>来访者])
+    Admin([👑 管理员])
+    AI([🤖 AI大模型<br/>百炼/Ollama])
+
+    subgraph S1[账号与权限]
+        U1(注册/登录·JWT)
+        U2(查看当前用户信息)
+    end
+    subgraph S2[AI心理咨询]
+        U3(流式心理对话·SSE)
+        U4(查看会话历史)
+        U5(删除咨询会话)
+        U6(切换AI供应商/模型)
+    end
+    subgraph S3[情绪管理]
+        U7(记录/编辑情绪日记)
+        U8(查看今日日记)
+        U9(情绪花园动态评分)
+    end
+    subgraph S4[知识库]
+        U10(浏览/搜索文章)
+        U11(阅读文章详情)
+        U12(文章/分类CRUD与发布)
+    end
+    subgraph S5[系统管理]
+        U13(数据看板·统计/趋势)
+        U14(咨询记录管理)
+        U15(情绪日记管理)
+        U16(上传图片/文件)
+    end
+
+    User --- U1
+    User --- U3
+    User --- U4
+    User --- U5
+    User --- U7
+    User --- U8
+    User --- U9
+    User --- U10
+    User --- U11
+    User --- U16
+
+    Admin --- U1
+    Admin --- U12
+    Admin --- U13
+    Admin --- U14
+    Admin --- U15
+    Admin --- U6
+    Admin --- U2
+    Admin --- U10
+
+    U3 <-. 流式生成疏导回复 .-> AI

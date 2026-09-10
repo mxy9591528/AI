@@ -21,6 +21,7 @@ com\example\aispringboot\controller\ConsultationController.class
 com\example\aispringboot\mapper\UserMapper.class
 com\example\aispringboot\config\JacksonConfig.class
 com\example\aispringboot\controller\DataAnalyticsController.class
+com\example\aispringboot\dto\command\UserProfileUpdateDTO.class
 com\example\aispringboot\ai\OllamaSseClient.class
 com\example\aispringboot\service\consultation\PsychologicalSupportService.class
 com\example\aispringboot\dto\response\UserLoginResponseDTO.class
@@ -76,6 +77,7 @@ com\example\aispringboot\service\system\UserService.class
 com\example\aispringboot\dto\command\EmotionDiaryCreateDTO.class
 com\example\aispringboot\config\RedisConfig.class
 com\example\aispringboot\config\SecurityConfig.class
+com\example\aispringboot\dto\command\UserPasswordUpdateDTO.class
 com\example\aispringboot\mapper\ConsultationMessageMapper.class
 com\example\aispringboot\mapper\KnowledgeCategoryMapper.class
 com\example\aispringboot\entity\ConsultationSession$ConsultationSessionBuilder.class

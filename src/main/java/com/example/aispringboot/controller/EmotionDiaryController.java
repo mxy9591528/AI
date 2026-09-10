@@ -45,6 +45,25 @@ public class EmotionDiaryController {
         return Result.ok(emotionDiaryService.getTodayDiary(userId));
     }
 
+    /** 当前用户的历史情绪日记分页，支持按日记日期范围筛选。 */
+    @GetMapping("/page")
+    public Result<Page<EmotionDiaryVO>> userPage(
+            @RequestParam(required = false) Long currentPage,
+            @RequestParam(required = false) Long current,
+            @RequestParam(required = false) Long pageNum,
+            @RequestParam(required = false) Long size,
+            @RequestParam(required = false) Long pageSize,
+            @RequestParam(name = "diaryDateStart", required = false)
+            @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate diaryDateStart,
+            @RequestParam(name = "diaryDateEnd", required = false)
+            @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate diaryDateEnd) {
+        Long userId = JwtTokenUtil.getCurrentUserId();
+        long page = currentPage != null ? currentPage : (current != null ? current : (pageNum != null ? pageNum : 1L));
+        long pageSizeVal = size != null ? size : (pageSize != null ? pageSize : 10L);
+        return Result.ok(emotionDiaryService.adminPage(page, pageSizeVal, userId, null,
+                null, diaryDateStart, diaryDateEnd));
+    }
+
     @GetMapping("/admin/page")
     @PreAuthorize("hasRole('2')")
     public Result<Page<EmotionDiaryVO>> adminPage(

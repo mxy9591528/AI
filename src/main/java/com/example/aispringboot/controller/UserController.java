@@ -2,6 +2,8 @@ package com.example.aispringboot.controller;
 
 import com.example.aispringboot.common.Result;
 import com.example.aispringboot.dto.command.UserLoginCommandDTO;
+import com.example.aispringboot.dto.command.UserPasswordUpdateDTO;
+import com.example.aispringboot.dto.command.UserProfileUpdateDTO;
 import com.example.aispringboot.dto.command.UserRegisterCommandDTO;
 import com.example.aispringboot.dto.response.UserLoginResponseDTO;
 import com.example.aispringboot.service.system.UserService;
@@ -10,6 +12,7 @@ import jakarta.annotation.Resource;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -44,5 +47,20 @@ public class UserController {
     public Result<UserLoginResponseDTO.UserDetailResponseDTO> getCurrentUser() {
         Long userId = JwtTokenUtil.getCurrentUserId();
         return Result.ok(userService.getUserById(userId));
+    }
+
+    /** 更新当前登录用户的个人资料（邮箱/昵称/手机号/性别/生日/头像）。 */
+    @PutMapping
+    public Result<UserLoginResponseDTO.UserDetailResponseDTO> updateProfile(@Valid @RequestBody UserProfileUpdateDTO dto) {
+        Long userId = JwtTokenUtil.getCurrentUserId();
+        return Result.ok(userService.updateProfile(userId, dto));
+    }
+
+    /** 修改当前登录用户的密码：需校验原密码。 */
+    @PutMapping("/password")
+    public Result<Void> updatePassword(@Valid @RequestBody UserPasswordUpdateDTO dto) {
+        Long userId = JwtTokenUtil.getCurrentUserId();
+        userService.updatePassword(userId, dto);
+        return Result.ok();
     }
 }

@@ -1,0 +1,86 @@
+classDiagram
+    class User {
+        +Long id
+        +String username
+        +String email
+        +String phone
+        +String password
+        +String nickname
+        +String avatar
+        +Integer gender
+        +LocalDate birthday
+        +Integer userType
+        +Integer status
+    }
+    class ConsultationSession {
+        +Long id
+        +Long userId
+        +String sessionTitle
+        +LocalDateTime startedAt
+        +String lastEmotionAnalysis
+        +LocalDateTime lastEmotionUpdatedAt
+    }
+    class ConsultationMessage {
+        +Long id
+        +Long sessionId
+        +Integer senderType
+        +Integer messageType
+        +String content
+        +String emotionTag
+        +String aiModel
+        +LocalDateTime createdAt
+    }
+    class EmotionDiary {
+        +Long id
+        +Long userId
+        +LocalDate diaryDate
+        +Integer moodScore
+        +String dominantEmotion
+        +String emotionTriggers
+        +String diaryContent
+        +Integer sleepQuality
+        +Integer stressLevel
+        +String aiEmotionAnalysis
+    }
+    class KnowledgeCategory {
+        +Long id
+        +Long parentId
+        +String categoryName
+        +String categoryCode
+        +String description
+        +Integer sortOrder
+        +Integer status
+    }
+    class KnowledgeArticle {
+        +String id
+        +Long categoryId
+        +String title
+        +String summary
+        +String content
+        +String coverImage
+        +String tags
+        +Long authorId
+        +Integer readCount
+        +Integer status
+        +LocalDateTime publishedAt
+    }
+    class SysFileInfo {
+        +Long id
+        +String originalName
+        +String filePath
+        +Long fileSize
+        +String fileType
+        +String businessType
+        +String businessId
+        +Long uploadUserId
+        +Integer isTemp
+        +Integer status
+    }
+
+    User "1" --> "0..*" ConsultationSession : 拥有
+    ConsultationSession "1" --> "1..*" ConsultationMessage : 包含
+    User "1" --> "0..*" EmotionDiary : 记录
+    User "1" --> "0..*" KnowledgeArticle : 创作(authorId)
+    KnowledgeCategory "1" --> "0..*" KnowledgeArticle : 归类
+    KnowledgeCategory "0..1" --> "0..*" KnowledgeCategory : 父子(parentId)
+    User "1" --> "0..*" SysFileInfo : 上传

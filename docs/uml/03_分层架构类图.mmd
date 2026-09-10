@@ -1,0 +1,64 @@
+classDiagram
+    direction LR
+
+    namespace ControllerLayer {
+        class UserController
+        class PsychologicalChatController
+        class ConsultationController
+        class EmotionDiaryController
+        class KnowledgeController
+        class AiProviderController
+        class DataAnalyticsController
+        class FileController
+    }
+    namespace ServiceLayer {
+        class UserService
+        class PsychologicalSupportService
+        class ConsultationSessionService
+        class ConsultationMessageService
+        class EmotionDiaryService
+        class EmotionGardenService
+        class KnowledgeService
+        class DataAnalyticsService
+        class FileService
+        class AiProviderManager
+        class OllamaSseClient
+    }
+    namespace MapperLayer {
+        class UserMapper
+        class ConsultationSessionMapper
+        class ConsultationMessageMapper
+        class EmotionDiaryMapper
+        class KnowledgeArticleMapper
+        class KnowledgeCategoryMapper
+        class SysFileInfoMapper
+    }
+
+    UserController ..> UserService
+    PsychologicalChatController ..> PsychologicalSupportService
+    ConsultationController ..> ConsultationSessionService
+    ConsultationController ..> ConsultationMessageService
+    ConsultationController ..> EmotionGardenService
+    EmotionDiaryController ..> EmotionDiaryService
+    KnowledgeController ..> KnowledgeService
+    DataAnalyticsController ..> DataAnalyticsService
+    FileController ..> FileService
+    AiProviderController ..> AiProviderManager
+
+    PsychologicalSupportService ..> ConsultationSessionService
+    PsychologicalSupportService ..> ConsultationMessageService
+    PsychologicalSupportService ..> AiProviderManager
+    PsychologicalSupportService ..> OllamaSseClient
+    EmotionGardenService ..> EmotionDiaryMapper
+    EmotionGardenService ..> ConsultationSessionMapper
+    EmotionGardenService ..> ConsultationMessageMapper
+
+    UserService ..> UserMapper
+    ConsultationSessionService ..> ConsultationSessionMapper
+    ConsultationSessionService ..> ConsultationMessageMapper
+    ConsultationMessageService ..> ConsultationMessageMapper
+    EmotionDiaryService ..> EmotionDiaryMapper
+    KnowledgeService ..> KnowledgeArticleMapper
+    KnowledgeService ..> KnowledgeCategoryMapper
+    FileService ..> SysFileInfoMapper
+    AiProviderManager ..> OllamaSseClient

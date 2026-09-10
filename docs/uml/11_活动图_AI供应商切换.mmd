@@ -1,0 +1,16 @@
+flowchart TD
+    A[管理员打开AI配置] --> B[GET /api/ai-config/provider]
+    B --> C{Ollama 在线?}
+    C -- 是 --> D[返回 百炼/Ollama + 模型列表]
+    C -- 否 --> E[仅返回百炼, ollamaOnline=false]
+    D --> F[选择供应商/模型]
+    E --> F
+    F --> G[PUT /api/ai-config/provider]
+    G --> H{provider}
+    H -- bailian --> I[currentProvider=bailian]
+    H -- ollama --> J{模型变更?}
+    J -- 是 --> K[按模型懒重建 Ollama ChatClient]
+    J -- 否 --> L[currentProvider=ollama]
+    K --> L
+    I --> M[后续对话即时生效]
+    L --> M

@@ -1,0 +1,40 @@
+sequenceDiagram
+    autonumber
+    participant V as 前端 Vue<br/>(consultation.vue)
+    participant PC as PsychologicalChatController
+    participant PS as PsychologicalSupportService
+    participant MS as ConsultationMessageService
+    participant AM as AiProviderManager
+    participant LLM as 大模型<br/>(百炼 ChatClient / OllamaSseClient)
+    participant DB as 数据库
+
+    Note over V: 首条消息：先 POST /session/start 创建会话
+    V->>PC: POST /session/start {initialMessage,title}
+    PC->>PS: startSession(userId, dto)
+    PS->>DB: 插入 ConsultationSession + 首条用户消息
+    DB-->>PS: sessionId
+    PS-->>V: StreamChatSession(session_xxx)
+
+    V->>PC: POST /stream (SSE) {sessionId,userMessage}
+    PC->>PS: streamPsychologicalChat(sessionId,msg)
+    PS->>MS: saveUserMessage(...)
+    MS->>DB: 持久化用户消息
+    PS->>DB: 加载最近10条历史消息
+    PS->>AM: 获取当前供应商 ChatClient
+    alt 百炼
+        AM->>LLM: ChatClient.prompt().stream()
+    else Ollama
+        AM->>LLM: OllamaSseClient.streamChat(过滤reasoning)
+    end
+    loop 逐片段
+        LLM-->>PS: token 片段
+        PS-->>PC: Flux 片段
+        PC-->>V: SSE event=message {content}
+        V->>V: 追加渲染(打字机)
+    end
+    LLM-->>PS: 完成
+    PS->>MS: saveAiMessage(完整回复,模型)
+    MS->>DB: 持久化 AI 消息
+    PC-->>V: SSE event=done
+    V->>PC: GET /emotion/garden
+    PC-->>V: 刷新情绪花园评分

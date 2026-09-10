@@ -1,0 +1,21 @@
+sequenceDiagram
+    autonumber
+    participant V as 前端 Vue<br/>(frontendKnowledge.vue)
+    participant KC as KnowledgeController
+    participant KS as KnowledgeService
+    participant DB as 数据库
+
+    V->>KC: GET /article/page?sortField=publishedAt&...
+    KC->>KS: articlePage(...,status=已发布)
+    KS->>DB: 分页查询(仅 status=1)
+    DB-->>V: 文章分页列表
+
+    V->>KC: GET /article/page?title=情绪(模糊搜索)
+    KC->>KS: articlePage(title, ...)
+    KS->>DB: title LIKE '%情绪%' AND status=1
+    DB-->>V: 匹配文章
+
+    V->>KC: GET /article/{id}
+    KC->>KS: getArticleDetail(id)
+    KS->>DB: 查详情 + readCount+1
+    DB-->>V: 文章正文/封面/作者

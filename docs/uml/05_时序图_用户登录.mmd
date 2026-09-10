@@ -1,0 +1,18 @@
+sequenceDiagram
+    autonumber
+    participant V as 前端 Vue
+    participant UC as UserController
+    participant US as UserService
+    participant DB as 数据库
+    participant JWT as JwtTokenUtil
+
+    V->>UC: POST /api/user/login {username,password}
+    UC->>US: login(commandDTO)
+    US->>DB: 按 username 查询 User
+    DB-->>US: User(含密文密码/状态)
+    US->>US: 校验密码(BCrypt)与账号状态
+    US->>JWT: 生成 Token(userId, userType)
+    JWT-->>US: token
+    US-->>UC: UserLoginResponseDTO(token + 用户信息)
+    UC-->>V: Result.ok(token, userInfo)
+    V->>V: localStorage 保存 token

@@ -28,6 +28,8 @@ D:\求职项目\AI\ai-springboot\src\main\java\com\example\aispringboot\dto\comm
 D:\求职项目\AI\ai-springboot\src\main\java\com\example\aispringboot\dto\command\EmotionDiaryCreateDTO.java
 D:\求职项目\AI\ai-springboot\src\main\java\com\example\aispringboot\dto\command\KnowledgeArticleCommandDTO.java
 D:\求职项目\AI\ai-springboot\src\main\java\com\example\aispringboot\dto\command\UserLoginCommandDTO.java
+D:\求职项目\AI\ai-springboot\src\main\java\com\example\aispringboot\dto\command\UserPasswordUpdateDTO.java
+D:\求职项目\AI\ai-springboot\src\main\java\com\example\aispringboot\dto\command\UserProfileUpdateDTO.java
 D:\求职项目\AI\ai-springboot\src\main\java\com\example\aispringboot\dto\command\UserRegisterCommandDTO.java
 D:\求职项目\AI\ai-springboot\src\main\java\com\example\aispringboot\dto\response\ConsultationMessageResponseDTO.java
 D:\求职项目\AI\ai-springboot\src\main\java\com\example\aispringboot\dto\response\DataAnalyticsOverviewDTO.java

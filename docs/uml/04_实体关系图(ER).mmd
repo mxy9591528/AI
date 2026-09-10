@@ -1,0 +1,84 @@
+erDiagram
+    USER ||--o{ CONSULTATION_SESSION : "拥有"
+    CONSULTATION_SESSION ||--|{ CONSULTATION_MESSAGE : "包含"
+    USER ||--o{ EMOTION_DIARY : "记录"
+    USER ||--o{ KNOWLEDGE_ARTICLE : "创作"
+    KNOWLEDGE_CATEGORY ||--o{ KNOWLEDGE_ARTICLE : "归类"
+    KNOWLEDGE_CATEGORY ||--o{ KNOWLEDGE_CATEGORY : "父子"
+    USER ||--o{ SYS_FILE_INFO : "上传"
+
+    USER {
+        bigint id PK
+        varchar username
+        varchar email
+        varchar phone
+        varchar password
+        varchar nickname
+        varchar avatar
+        int user_type
+        int status
+        datetime created_at
+    }
+    CONSULTATION_SESSION {
+        bigint id PK
+        bigint user_id FK
+        varchar session_title
+        datetime started_at
+        text last_emotion_analysis
+        datetime last_emotion_updated_at
+    }
+    CONSULTATION_MESSAGE {
+        bigint id PK
+        bigint session_id FK
+        tinyint sender_type
+        tinyint message_type
+        text content
+        varchar emotion_tag
+        varchar ai_model
+        datetime created_at
+    }
+    EMOTION_DIARY {
+        bigint id PK
+        bigint user_id FK
+        date diary_date
+        int mood_score
+        varchar dominant_emotion
+        varchar emotion_triggers
+        text diary_content
+        int sleep_quality
+        int stress_level
+        text ai_emotion_analysis
+    }
+    KNOWLEDGE_CATEGORY {
+        bigint id PK
+        bigint parent_id FK
+        varchar category_name
+        varchar category_code
+        int sort_order
+        int status
+    }
+    KNOWLEDGE_ARTICLE {
+        varchar id PK
+        bigint category_id FK
+        varchar title
+        text summary
+        longtext content
+        varchar cover_image
+        varchar tags
+        bigint author_id FK
+        int read_count
+        int status
+        datetime published_at
+    }
+    SYS_FILE_INFO {
+        bigint id PK
+        varchar original_name
+        varchar file_path
+        bigint file_size
+        varchar file_type
+        varchar business_type
+        varchar business_id
+        bigint upload_user_id FK
+        tinyint is_temp
+        int status
+    }

@@ -1,0 +1,23 @@
+sequenceDiagram
+    autonumber
+    participant V as 前端 Vue<br/>(emotionDiary.vue)
+    participant EC as EmotionDiaryController
+    participant ES as EmotionDiaryService
+    participant DB as 数据库
+
+    Note over V: 进入页面 onMounted 自动加载今日记录
+    V->>EC: GET /api/emotion-diary/today
+    EC->>ES: getTodayDiary(userId)
+    ES->>DB: 按 (userId, 今天) 查询
+    DB-->>ES: 已有记录 / null
+    ES-->>V: 有则回填(编辑态)，无则空白
+
+    V->>EC: POST /api/emotion-diary {diaryDate,moodScore,...}
+    EC->>ES: saveDiary(userId, dto)
+    ES->>DB: 按 (userId, diaryDate) 查询
+    alt 当日无记录
+        ES->>DB: insert 新日记
+    else 当日已有记录
+        ES->>DB: update 覆盖更新
+    end
+    ES-->>V: Result.ok()

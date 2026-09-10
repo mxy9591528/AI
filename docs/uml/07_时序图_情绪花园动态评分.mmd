@@ -1,0 +1,23 @@
+sequenceDiagram
+    autonumber
+    participant V as 前端 Vue
+    participant CC as ConsultationController
+    participant G as EmotionGardenService
+    participant DM as EmotionDiaryMapper
+    participant SM as ConsultationSessionMapper
+    participant MM as ConsultationMessageMapper
+
+    V->>CC: GET /api/psychological-chat/emotion/garden
+    CC->>G: buildGarden(currentUserId)
+    G->>DM: 查近14天 EmotionDiary 列表
+    DM-->>G: 日记(moodScore/内容/情绪/触发因素)
+    G->>G: moodScore 均值×10 → 日记分(0.6)<br/>统计积极/消极/危机词
+    G->>SM: 查近14天会话 id 集合
+    SM-->>G: sessionIds
+    G->>MM: 查这些会话中用户消息(≤100条)
+    MM-->>G: 用户对话内容
+    G->>G: 50 + 积极词×4 − 消极词×7 → 对话分(0.4)
+    G->>G: 加权融合 + 危机词命中判定风险等级
+    G-->>CC: {emotionScore,primaryEmotion,<br/>riskLevel,suggestion,dataSource...}
+    CC-->>V: Result.ok(花园状态)
+    V->>V: 更新情绪名/分数/建议/治愈行动
