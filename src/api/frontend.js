@@ -54,3 +54,34 @@ export function getSessionEmotion(sessionId) {
 export function getEmotionGarden() {
     return request({ url: '/api/psychological-chat/emotion/garden', method: 'get' })
 }
+
+// ========== 个人中心 ==========
+
+// 获取当前登录用户信息
+export function getCurrentUser() {
+    return request({ url: '/api/user/current', method: 'get' })
+}
+
+// 更新个人资料（邮箱/昵称/手机号/性别/生日/头像）
+export function updateProfile(data) {
+    return request({ url: '/api/user', method: 'put', data })
+}
+
+// 修改密码（需原密码 + 两次新密码）
+export function updatePassword(data) {
+    return request({ url: '/api/user/password', method: 'put', data })
+}
+
+// 上传头像（通用文件上传）
+export function uploadAvatar(file) {
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('businessType', 'USER')
+    formData.append('businessField', 'avatar')
+    return request({ url: '/api/file/upload', method: 'post', data: formData })
+}
+
+// 当前用户的历史情绪日记分页（支持日期范围筛选）
+export function getUserDiaryPage(params) {
+    return request({ url: '/api/emotion-diary/page', method: 'get', params })
+}

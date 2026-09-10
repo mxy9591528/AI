@@ -73,7 +73,11 @@ const submitForm = async (formEl) => {
     if (!formEl) return
     formEl.validate(async (valid) => {
         if (valid) {
-            register(formData).then(() => {
+            // 清理可选空字段，避免后端把空串当作有值处理
+            const payload = { ...formData }
+            if (!payload.nickname) delete payload.nickname
+            if (!payload.phone) delete payload.phone
+            register(payload).then(() => {
                 ElMessage.success('注册成功')
                 // 注册成功后跳转到登录页
                 router.push('/auth/login')

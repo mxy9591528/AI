@@ -67,8 +67,8 @@
              <div class="session-history">
                 <h4 class="section-title">会话列表</h4>
                 <div class="session-list">
-                    <div v-for="session in sessionList" :key="session.id" @click="handleSessionClick(session)" class="session-item">
-                        <div class="session-info">
+                    <div v-for="session in sessionList" :key="session.id" class="session-item">
+                        <div class="session-info" @click="handleSessionClick(session)">
                             <div class="session-title">
                                 <span>{{ session.sessionTitle }}</span>
                                 <div class="session-meta">
@@ -92,13 +92,12 @@
                                     </span>
                                 </div>
                             </div>
-                            <div class="session-actions">
-                                <el-button text type="danger" size="mini" @click="handleDeleteSession(session.id)">
-                                    <el-icon>
-                                        <DeleteFilled />
-                                    </el-icon>
-                                </el-button>
-                            </div>
+                        </div>
+                        <div class="session-actions">
+                            <el-button text type="danger" size="small" @click.stop="handleDeleteSession(session.id)">
+                                <el-icon><DeleteFilled /></el-icon>
+                                删除
+                            </el-button>
                         </div>
                     </div>
                 </div>
@@ -222,7 +221,7 @@
 import {nextTick, onMounted, ref} from 'vue'
 import {deleteSession, getEmotionGarden, getSessionDetail, getSessionList, startSession} from '@/api/frontend'
 import {getAiProvider, switchAiProvider} from '@/api/admin'
-import {ElMessage} from 'element-plus'
+import {ElMessage, ElMessageBox} from 'element-plus'
 import {ChatRound, Clock, DeleteFilled, Plus, Promotion} from '@element-plus/icons-vue'
 import MarkdownRenderer from '@/components/MarkdownRenderer.vue'
 import {fetchEventSource} from '@microsoft/fetch-event-source'
@@ -289,6 +288,8 @@ const messages = ref([])
 const userMessage = ref('')
 // 定义AI助手是否正在输入
 const isAiTyping = ref(false)
+// 标记流式响应是否已正常收到 done 事件（用于区分"正常结束 abort"与"真错误"）
+const streamCompleted = ref(false)
 
 // 情绪花园
 const currentEmotion = ref({
@@ -441,6 +442,7 @@ const startAIResponse = (sessionId, userMessage) => {
     }
 
     isAiTyping.value = true
+    streamCompleted.value = false
 
     const aiMessage = {
         id: `ai_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -481,7 +483,8 @@ const startAIResponse = (sessionId, userMessage) => {
         signal: ctrl.signal,
         onopen: (response) => {
             console.log(response)
-            if (response.headers.get('Content-Type') !== 'text/event-stream') {
+            const ct = response.headers.get('Content-Type') || ''
+            if (!ct.includes('text/event-stream')) {
                 ElMessage.error('服务器返回非流式数据')
             }
         },
@@ -493,9 +496,9 @@ const startAIResponse = (sessionId, userMessage) => {
             const aiMessage = messages.value[messages.value.length - 1]
 
             if (eventName === 'done') {
+                streamCompleted.value = true
                 isAiTyping.value = false
                 clearTimeout(timeoutId)
-                ctrl.abort()
                 // 对话完成后刷新情绪花园评分
                 loadEmotionGarden()
                 return
@@ -512,6 +515,8 @@ const startAIResponse = (sessionId, userMessage) => {
         },
         onerror: (err) => {
             clearTimeout(timeoutId)
+            // done 事件后连接自然断开会触发 abort，属于正常结束，不报错
+            if (streamCompleted.value) return
             handleError(err || 'AI回复失败')
             throw err
         },
@@ -530,7 +535,10 @@ const handleError = (error) => {
     // 当前会话的AI消息
     const aiMessage = messages.value[messages.value.length - 1]
     if (aiMessage) {
-        aiMessage.content = 'AI回复失败，请重试'
+        // 已有内容说明AI至少回复了一部分，不要覆盖
+        if (!aiMessage.content) {
+            aiMessage.content = 'AI回复失败，请重试'
+        }
     }
     isAiTyping.value = false
     ElMessage.error('AI回复失败，请重试')
@@ -542,7 +550,9 @@ const getSessionPage = () => {
         pageSize: 10
     }).then(res => {
         console.log(res)
-        sessionList.value = res.records
+        sessionList.value = res.records || []
+    }).catch(err => {
+        console.error('获取会话列表失败', err)
     })
 }
 
@@ -565,10 +575,32 @@ const handleSessionClick = (session) => {
 }
 
 const handleDeleteSession = (sessionId) => {
-    deleteSession(sessionId).then(res => {
-        ElMessage.success('删除成功')
-        getSessionPage()
-    })
+    ElMessageBox.confirm('确定删除该会话吗？相关聊天记录将一并清除', '删除确认', {
+        confirmButtonText: '删除',
+        cancelButtonText: '取消',
+        type: 'warning',
+        confirmButtonClass: 'el-button--danger'
+    }).then(() => {
+        deleteSession(sessionId).then(() => {
+            ElMessage.success('删除成功')
+            // 如果删的是当前会话，重置为空/新会话状态
+            const prefix = 'session_' + sessionId
+            if (currentSession.value?.sessionId === prefix || !currentSession.value || currentSession.value.status === 'ACTIVE') {
+                const wasActive = currentSession.value?.sessionId === prefix
+                getSessionPage()
+                if (wasActive) {
+                    currentSession.value = {
+                        sessionId: `temp_${Date.now()}`,
+                        status: 'TEMP',
+                        sessionTitle: '新对话'
+                    }
+                    messages.value = []
+                }
+            } else {
+                getSessionPage()
+            }
+        })
+    }).catch(() => {})
 }
 
 // 简单的换行逻辑
@@ -670,6 +702,10 @@ $ai-bubble: #ffffff;
             padding: 18px;
             box-shadow: 0 2px 12px rgba(74, 156, 140, 0.08);
             border: 1px solid rgba(74, 156, 140, 0.1);
+            /* 限制高度：不超过 sidebar 可视区的 45%，给 session-history 留足空间 */
+            max-height: 48%;
+            overflow-y: auto;
+            flex-shrink: 0;
 
             .garden-header {
                 display: flex;
@@ -770,8 +806,8 @@ $ai-bubble: #ffffff;
             flex: 1;
             display: flex;
             flex-direction: column;
-            /* 最小 180px：保证至少能看见 2-3 条会话，emotion-garden 不会把它完全挤没 */
-            min-height: 180px;
+            /* 至少保证 220px 让 2-3 条会话可见；emotion-garden 已限制 max-height */
+            min-height: 220px;
 
             .section-title {
                 font-size: 15px; font-weight: 600; color: #1f5d54; margin: 0 0 12px;
@@ -780,11 +816,15 @@ $ai-bubble: #ffffff;
                 overflow-y: auto; flex: 1; min-height: 0;
                 scrollbar-width: thin; scrollbar-color: $brand-light transparent;
                 .session-item {
-                    padding: 10px 12px; border-radius: 12px; cursor: pointer;
+                    padding: 10px 12px; border-radius: 12px;
                     transition: all 0.2s ease; margin-bottom: 6px;
+                    display: flex; align-items: flex-start; gap: 8px;
+                    background: transparent;
                     &:hover { background: $brand-bg; }
                     .session-info {
-                        .session-title { font-size: 13px; font-weight: 500; color: #1f2937; margin-bottom: 2px;
+                        flex: 1; min-width: 0; cursor: pointer;
+                        .session-title {
+                            font-size: 13px; font-weight: 500; color: #1f2937; margin-bottom: 2px;
                             .session-meta .session-time { font-size: 11px; color: #9ca3af; }
                         }
                         .session-preview {
@@ -792,6 +832,10 @@ $ai-bubble: #ffffff;
                             overflow: hidden; text-overflow: ellipsis;
                         }
                     }
+                    .session-actions {
+                        flex-shrink: 0; opacity: 0.5; transition: opacity 0.2s;
+                    }
+                    &:hover .session-actions { opacity: 1; }
                 }
             }
         }

@@ -9,7 +9,8 @@ const routes = [
             { path: 'consultation', name: 'consultation', component: () => import('@/views/consultation.vue') },
             { path: 'emotion-diary', name: 'emotionDiary', component: () => import('@/views/emotionDiary.vue') },
             { path: 'knowledge', name: 'frontendKnowledge', component: () => import('@/views/frontendKnowledge.vue') },
-            { path: 'knowledge/article/:id', name: 'articleDetail', component: () => import('@/views/articleDetail.vue'), props: true }
+            { path: 'knowledge/article/:id', name: 'articleDetail', component: () => import('@/views/articleDetail.vue'), props: true },
+            { path: 'profile', name: 'profile', component: () => import('@/views/profile.vue') }
         ]
     },
     {
@@ -37,9 +38,10 @@ const router = createRouter({
     routes
 })
 
-// 路由守卫：后台管理路由需要登录
+// 路由守卫：后台管理路由与个人中心需要登录
 router.beforeEach((to, from, next) => {
-    if (to.path.startsWith('/back') && !localStorage.getItem('token')) {
+    const needLogin = to.path.startsWith('/back') || to.path === '/profile'
+    if (needLogin && !localStorage.getItem('token')) {
         next('/auth/login')
     } else {
         next()
