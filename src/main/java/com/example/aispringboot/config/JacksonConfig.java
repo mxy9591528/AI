@@ -1,5 +1,7 @@
 package com.example.aispringboot.config;
 
+import com.fasterxml.jackson.databind.JsonDeserializer;
+import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateDeserializer;
 import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateTimeDeserializer;
 import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateSerializer;
@@ -19,10 +21,10 @@ public class JacksonConfig {
     @Bean
     public Jackson2ObjectMapperBuilderCustomizer jacksonCustomizer() {
         return builder -> {
-            builder.serializerByType(LocalDateTime.class, new LocalDateTimeSerializer(DATE_TIME_FORMATTER));
-            builder.deserializerByType(LocalDateTime.class, new LocalDateTimeDeserializer(DATE_TIME_FORMATTER));
-            builder.serializerByType(LocalDate.class, new LocalDateSerializer(DATE_FORMATTER));
-            builder.deserializerByType(LocalDate.class, new LocalDateDeserializer(DATE_FORMATTER));
+            builder.serializerByType(LocalDateTime.class, (JsonSerializer<?>)new LocalDateTimeSerializer(DATE_TIME_FORMATTER));
+            builder.deserializerByType(LocalDateTime.class, (JsonDeserializer<?>)new LocalDateTimeDeserializer(DATE_TIME_FORMATTER));
+            builder.serializerByType(LocalDate.class, (JsonSerializer<?>)new LocalDateSerializer(DATE_FORMATTER));
+            builder.deserializerByType(LocalDate.class, (JsonDeserializer<?>)new LocalDateDeserializer(DATE_FORMATTER));
         };
     }
 }

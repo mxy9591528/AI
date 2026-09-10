@@ -6,9 +6,10 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 /**
- * 全局异常处理：参数校验 / 业务 / 权限 / 兜底，统一返回 Result 结构。
+ * 全局异常处理：参数校验 / 业务 / 权限 / 文件上传超限 / 兜底，统一返回 Result 结构。
  */
 @Slf4j
 @RestControllerAdvice
@@ -32,6 +33,13 @@ public class GlobalExceptionHandler {
         response.setStatus(403);
         log.warn("权限不足: {}", e.getMessage());
         return Result.error("403", "权限不足，禁止访问", null);
+    }
+
+    /** 上传文件超过 spring.servlet.multipart.max-file-size 时返回友好提示，避免前端只看到 "系统错误"。 */
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public Result<?> handleMaxUploadSizeExceeded(MaxUploadSizeExceededException e) {
+        log.warn("文件大小超限: {}", e.getMessage());
+        return Result.error("413", "上传失败：图片大小不能超过 10MB，请压缩后重试", null);
     }
 
     @ExceptionHandler(Exception.class)

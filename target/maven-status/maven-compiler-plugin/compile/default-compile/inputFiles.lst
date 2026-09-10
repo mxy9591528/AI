@@ -60,6 +60,7 @@ D:\求职项目\AI\ai-springboot\src\main\java\com\example\aispringboot\service\
 D:\求职项目\AI\ai-springboot\src\main\java\com\example\aispringboot\service\consultation\PsychologicalSupportService.java
 D:\求职项目\AI\ai-springboot\src\main\java\com\example\aispringboot\service\convert\UserConvert.java
 D:\求职项目\AI\ai-springboot\src\main\java\com\example\aispringboot\service\emotion\EmotionDiaryService.java
+D:\求职项目\AI\ai-springboot\src\main\java\com\example\aispringboot\service\emotion\EmotionGardenService.java
 D:\求职项目\AI\ai-springboot\src\main\java\com\example\aispringboot\service\knowledge\KnowledgeService.java
 D:\求职项目\AI\ai-springboot\src\main\java\com\example\aispringboot\service\system\DataAnalyticsService.java
 D:\求职项目\AI\ai-springboot\src\main\java\com\example\aispringboot\service\system\FileService.java

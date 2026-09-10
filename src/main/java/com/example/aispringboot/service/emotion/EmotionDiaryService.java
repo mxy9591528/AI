@@ -13,6 +13,7 @@ import com.example.aispringboot.mapper.UserMapper;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -27,6 +28,15 @@ public class EmotionDiaryService {
 
     @Resource
     private UserMapper userMapper;
+
+    @SuppressWarnings("null")
+    public EmotionDiaryVO getTodayDiary(Long userId) {
+        LambdaQueryWrapper<EmotionDiary> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(EmotionDiary::getUserId, userId)
+                .eq(EmotionDiary::getDiaryDate, java.time.LocalDate.now());
+        EmotionDiary diary = emotionDiaryMapper.selectOne(wrapper);
+        return diary == null ? null : toVO(diary);
+    }
 
     @SuppressWarnings("null")
     public void saveDiary(Long userId, EmotionDiaryCreateDTO dto) {
@@ -56,9 +66,29 @@ public class EmotionDiaryService {
     }
 
     @SuppressWarnings("null")
-    public Page<EmotionDiaryVO> adminPage(long current, long size, Long userId, String moodScoreRange) {
+    public Page<EmotionDiaryVO> adminPage(long current, long size, Long userId, String moodScoreRange,
+                                          String username, LocalDate diaryDateStart, LocalDate diaryDateEnd) {
         LambdaQueryWrapper<EmotionDiary> wrapper = new LambdaQueryWrapper<>();
+        // userId 精确过滤（优先级最高）
         wrapper.eq(userId != null, EmotionDiary::getUserId, userId);
+
+        // 用户名/昵称模糊过滤：先用子查询找到匹配的 userId
+        if (StrUtil.isNotBlank(username)) {
+            LambdaQueryWrapper<User> userWrapper = new LambdaQueryWrapper<>();
+            userWrapper.and(w -> w.like(User::getUsername, username).or().like(User::getNickname, username));
+            List<User> matchedUsers = userMapper.selectList(userWrapper);
+            List<Long> matchedUserIds = matchedUsers.stream().map(User::getId).collect(Collectors.toList());
+            if (matchedUserIds.isEmpty()) {
+                return new Page<>(current, size, 0);
+            }
+            wrapper.in(EmotionDiary::getUserId, matchedUserIds);
+        }
+
+        // 日期范围过滤
+        wrapper.ge(diaryDateStart != null, EmotionDiary::getDiaryDate, diaryDateStart);
+        wrapper.le(diaryDateEnd != null, EmotionDiary::getDiaryDate, diaryDateEnd);
+
+        // 情绪评分区间
         if (StrUtil.isNotBlank(moodScoreRange) && moodScoreRange.contains("-")) {
             try {
                 String[] parts = moodScoreRange.split("-");

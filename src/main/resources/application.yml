@@ -5,6 +5,12 @@ spring:
     # 支持环境变量覆盖：DB_PASSWORD
     password: ${DB_PASSWORD:Tustids@0911}
 
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 10MB      # 单个文件最大 10MB（封面图片）
+      max-request-size: 20MB   # 整个请求最大 20MB（预留多文件场景）
+
   data:
     redis:
       host: localhost

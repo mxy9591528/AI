@@ -2,15 +2,16 @@ package com.example.aispringboot.config;
 
 import com.example.aispringboot.service.system.FileService;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.lang.NonNull;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @Configuration
 public class WebMvcConfig
 implements WebMvcConfigurer {
-    public void addResourceHandlers(ResourceHandlerRegistry registry) {
+    public void addResourceHandlers(@NonNull ResourceHandlerRegistry registry) {
         String location = FileService.UPLOAD_ROOT.resolve("").toUri().toString();
-        registry.addResourceHandler("/upload/**").addResourceLocations(location);
+        registry.addResourceHandler(new String[]{"/upload/**"}).addResourceLocations(new String[]{location});
     }
 }
 

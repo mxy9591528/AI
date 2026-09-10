@@ -52,11 +52,28 @@ public class ConsultationSessionService {
         return session;
     }
 
-    public Page<SessionListItemVO> sessionPage(long current, long size, Long userId) {
+    public Page<SessionListItemVO> sessionPage(long current, long size, Long userId, String username) {
         LambdaQueryWrapper<ConsultationSession> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(userId != null, ConsultationSession::getUserId, userId)
-                .orderByDesc(ConsultationSession::getStartedAt);
-        Page<ConsultationSession> page = consultationSessionMapper.selectPage(new Page<>(current, size), wrapper);
+        // 按 userId 直接过滤（精确）
+        wrapper.eq(userId != null, ConsultationSession::getUserId, userId);
+        wrapper.orderByDesc(ConsultationSession::getStartedAt);
+
+        Page<ConsultationSession> page;
+        if (StrUtil.isNotBlank(username)) {
+            // 按用户名/昵称模糊过滤：用子查询先拿到匹配的 userId，再过滤会话
+            LambdaQueryWrapper<User> userWrapper = new LambdaQueryWrapper<>();
+            userWrapper.and(w -> w.like(User::getUsername, username).or().like(User::getNickname, username));
+            List<User> matchedUsers = userMapper.selectList(userWrapper);
+            List<Long> matchedUserIds = matchedUsers.stream().map(User::getId).collect(Collectors.toList());
+            if (matchedUserIds.isEmpty()) {
+                // 没匹配到任何用户 → 直接返回空页
+                return new Page<>(current, size, 0);
+            }
+            wrapper.in(ConsultationSession::getUserId, matchedUserIds);
+            page = consultationSessionMapper.selectPage(new Page<>(current, size), wrapper);
+        } else {
+            page = consultationSessionMapper.selectPage(new Page<>(current, size), wrapper);
+        }
         Page<SessionListItemVO> resultPage = new Page<>(page.getCurrent(), page.getSize(), page.getTotal());
         List<SessionListItemVO> voList = page.getRecords().stream().map(session -> {
             SessionListItemVO vo = new SessionListItemVO();
@@ -74,7 +91,7 @@ public class ConsultationSessionService {
         return resultPage;
     }
 
-    /** 批量补齐用户昵称，避免逐条查询的 N+1 问题。 */
+    /** 批量补齐用户昵称/登录名，避免逐条查询的 N+1 问题。 */
     private void fillUserInfo(List<SessionListItemVO> voList) {
         Set<Long> userIds = voList.stream().map(SessionListItemVO::getUserId).filter(Objects::nonNull).collect(Collectors.toSet());
         if (userIds.isEmpty()) {
@@ -84,9 +101,11 @@ public class ConsultationSessionService {
                 .collect(Collectors.toMap(User::getId, Function.identity()));
         for (SessionListItemVO vo : voList) {
             User user = userMap.get(vo.getUserId());
-            if (user != null) {
-                vo.setUserNickname(StrUtil.isNotBlank(user.getNickname()) ? user.getNickname() : user.getUsername());
+            if (user == null) {
+                continue;
             }
+            vo.setUsername(user.getUsername());
+            vo.setUserNickname(StrUtil.isNotBlank(user.getNickname()) ? user.getNickname() : user.getUsername());
         }
     }
 

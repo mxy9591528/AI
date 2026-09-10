@@ -10,6 +10,7 @@ import com.example.aispringboot.entity.ConsultationSession;
 import com.example.aispringboot.exception.BusinessException;
 import com.example.aispringboot.service.consultation.ConsultationMessageService;
 import com.example.aispringboot.service.consultation.ConsultationSessionService;
+import com.example.aispringboot.service.emotion.EmotionGardenService;
 import com.example.aispringboot.util.JwtTokenUtil;
 import jakarta.annotation.Resource;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -37,6 +38,8 @@ public class ConsultationController {
     private ConsultationSessionService consultationSessionService;
     @Resource
     private ConsultationMessageService consultationMessageService;
+    @Resource
+    private EmotionGardenService emotionGardenService;
 
     @GetMapping("/sessions")
     public Result<Page<SessionListItemVO>> sessions(
@@ -44,12 +47,19 @@ public class ConsultationController {
             @RequestParam(required = false) Long current,
             @RequestParam(required = false) Long pageNum,
             @RequestParam(required = false) Long size,
-            @RequestParam(required = false) Long pageSize) {
+            @RequestParam(required = false) Long pageSize,
+            /** 管理员按用户名/昵称模糊搜索 */
+            @RequestParam(required = false) String username,
+            /** 管理员按 userId 精确搜索（覆盖内置"只查自己"逻辑） */
+            @RequestParam(required = false) Long userId) {
         long page = firstNonNull(currentPage, current, pageNum, 1L);
         long pageSizeVal = firstNonNull(size, pageSize, 10L);
-        Long userId = JwtTokenUtil.getCurrentUserId();
-        Long queryUserId = JwtTokenUtil.getCurrentRoleType() == ROLE_ADMIN ? null : userId;
-        return Result.ok(consultationSessionService.sessionPage(page, pageSizeVal, queryUserId));
+        boolean isAdmin = JwtTokenUtil.getCurrentRoleType() == ROLE_ADMIN;
+        Long queryUserId = isAdmin
+                ? (userId != null ? userId : null)   // 管理员可按前端传入的 userId 精确搜，不传则查全部
+                : JwtTokenUtil.getCurrentUserId();    // 普通用户只查自己
+        String queryUsername = isAdmin ? username : null; // 仅管理员支持用户名模糊搜索
+        return Result.ok(consultationSessionService.sessionPage(page, pageSizeVal, queryUserId, queryUsername));
     }
 
     @GetMapping("/sessions/{id}/messages")
@@ -77,6 +87,14 @@ public class ConsultationController {
             return Result.ok(JSONUtil.parseObj(session.getLastEmotionAnalysis()));
         }
         return Result.ok(defaultEmotion());
+    }
+
+    /**
+     * 情绪花园：综合当前用户近 14 天的情绪日记评分 + AI 咨询对话内容动态评分。
+     */
+    @GetMapping("/emotion/garden")
+    public Result<Map<String, Object>> emotionGarden() {
+        return Result.ok(emotionGardenService.buildGarden(JwtTokenUtil.getCurrentUserId()));
     }
 
     /** 兼容前端多种分页参数名，取第一个非空值。 */
