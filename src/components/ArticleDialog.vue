@@ -40,6 +40,7 @@
                     <div v-if="imgUrl" class="cover-remove">
                         <el-button type="danger" size="mini" @click="handleRemove">移除封面</el-button>
                     </div>
+                    <div class="upload-tip">支持 JPG/PNG/WebP，图片大小不超过 10MB</div>
                 </div>
             </el-form-item>
             <el-form-item label="文章内容" prop="content">
@@ -99,41 +100,61 @@ const dialogVisible = computed({
 
 const isEdit = computed(() => !!props.article?.id)
 
-// 监听编辑数据
-watch(() => props.article, (newVal) => {
-    if (newVal) {
-        nextTick(() => {
-            Object.assign(formData, newVal)
-            // 使用现有ID
-            businessId.value = newVal.id
-            // 封面Url
-            imgUrl.value = fileBaseUrl + newVal.coverImage
-        })
-    }
+// 表单数据（初始值也是 resetFields 的重置基准）
+const formData = reactive({
+    title: "",
+    content: "",
+    coverImage: "",
+    categoryId: "",
+    summary: "",
+    tags: "",
+    tagArray: [],
+    id: ""
 })
 
-const handleClose = () => {
-    // 重置表单
-    formRef.value.resetFields()
-    // 重置ID
-    businessId.value = null
-    // 重置标签
+// 弹窗每次打开时（重新）初始化表单数据，避免上一次编辑的残留字段
+watch(() => props.modelValue, (visible) => {
+    if (!visible) return
+    nextTick(() => {
+        if (props.article && props.article.id) {
+            // 编辑：只回填表单需要的字段（避免把 readCount/status 等响应字段带入提交体）
+            const a = props.article
+            formData.id = a.id
+            formData.title = a.title || ''
+            formData.content = a.content || ''
+            formData.categoryId = a.categoryId ?? ''
+            formData.summary = a.summary || ''
+            formData.coverImage = a.coverImage || ''
+            formData.tags = a.tags || ''
+            formData.tagArray = Array.isArray(a.tagArray) ? [...a.tagArray]
+                : (a.tags ? a.tags.split(',').filter(Boolean) : [])
+            businessId.value = a.id
+            imgUrl.value = a.coverImage ? fileBaseUrl + a.coverImage : ''
+        } else {
+            // 新增：清空全部字段
+            resetFormData()
+        }
+    })
+})
+
+const resetFormData = () => {
+    formData.title = ''
+    formData.content = ''
+    formData.coverImage = ''
+    formData.categoryId = ''
+    formData.summary = ''
+    formData.tags = ''
     formData.tagArray = []
-    // 重置封面图片和数据
-    handleRemove()
-    emit('update:modelValue', false)
+    formData.id = ''
+    businessId.value = null
+    imgUrl.value = ''
 }
 
-// 表单数据
-const formData = reactive({
-    "title": "",
-    "content": "",
-    "coverImage": "",
-    "categoryId": "",
-    "summary": "",
-    "tags": "",
-    "id": ""
-})
+const handleClose = () => {
+    formRef.value?.resetFields()
+    resetFormData()
+    emit('update:modelValue', false)
+}
 
 const rules = reactive({
     title: [
@@ -157,17 +178,17 @@ const commonTags = [
 
 // 上传
 const imgUrl = ref('')
+const MAX_FILE_SIZE_MB = 10
 const beforeUpload = (file) => {
-    // 针对上传的文件进行校验
-    console.log(file)
     const isImage = file.type.startsWith('image/')
-    const isLt5M = file.size / 1014 / 1014 < 5
+    const sizeMB = file.size / 1024 / 1024
+    const isLtMax = sizeMB < MAX_FILE_SIZE_MB
     if (!isImage) {
-        ElMessage.error('上传封面图片，请选择图片文件')
+        ElMessage.error('请选择图片文件作为封面')
         return false
     }
-    if (!isLt5M) {
-        ElMessage.error('上传封面图片，图片大小不能超过5MB')
+    if (!isLtMax) {
+        ElMessage.error(`图片大小不能超过 ${MAX_FILE_SIZE_MB}MB（当前 ${sizeMB.toFixed(1)}MB）`)
         return false
     }
     return true
@@ -176,14 +197,17 @@ const businessId = ref(null)
 const handleUploadRequest = async ({ file }) => {
     // UUID生成
     businessId.value = crypto.randomUUID()
-    const fileRes = await uploadFile(file, {
-        businessId: businessId.value
-    })
-    console.log(fileRes)
-
-    // 拼接完整的图片地址
-    imgUrl.value = fileBaseUrl + fileRes.filePath
-    formData.coverImage = fileRes.filePath
+    try {
+        const fileRes = await uploadFile(file, {
+            businessId: businessId.value
+        })
+        // 拼接完整的图片地址
+        imgUrl.value = fileBaseUrl + fileRes.filePath
+        formData.coverImage = fileRes.filePath
+        ElMessage.success('封面上传成功')
+    } catch (e) {
+        ElMessage.error('图片上传失败，请重试')
+    }
 }
 
 const handleRemove = () => {
@@ -214,32 +238,37 @@ const btnPreview = ref(false)
 const formRef = ref()
 const loading = ref(false)
 const handleSubmit = () => {
-    formRef.value.validate((valid, fields) => {
-        if (valid) {
-            loading.value = true
-        }
-        console.log(formData, 'FormData')
+    formRef.value.validate((valid) => {
+        if (!valid) return
+        loading.value = true
+        // 只提交后端需要的字段（白名单），避免残留的 readCount/status 等响应字段
         const submitData = {
-            ...formData,
-            tags: formData.tagArray.join(',')
+            title: formData.title,
+            content: formData.content,
+            coverImage: formData.coverImage,
+            categoryId: formData.categoryId,
+            summary: formData.summary,
+            tags: (formData.tagArray || []).join(','),
+            id: formData.id
         }
-        delete submitData.tagArray
-        
         if (!isEdit.value) {
             submitData.id = businessId.value
-            createArticle(submitData).then(res => {
+            createArticle(submitData).then(() => {
                 loading.value = false
+                ElMessage.success('文章创建成功')
                 emit('success')
+            }).catch(() => {
+                loading.value = false
             })
         } else {
-            updateArticle(props.article.id, submitData).then(res => {
+            updateArticle(props.article.id, submitData).then(() => {
                 loading.value = false
+                ElMessage.success('文章更新成功')
                 emit('success')
+            }).catch(() => {
+                loading.value = false
             })
         }
-
-        
-
     })
 }
 </script>
@@ -258,5 +287,11 @@ const handleSubmit = () => {
     width: 200px;
     height: 120px;
     display: block;
+}
+.upload-tip {
+    margin-top: 6px;
+    font-size: 12px;
+    color: #909399;
+    line-height: 1.5;
 }
 </style>

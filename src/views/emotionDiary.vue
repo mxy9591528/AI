@@ -70,7 +70,9 @@
                     </div>
                     <div class="action-buttons">
                         <el-button  @click="resetForm">重置</el-button>
-                        <el-button type="primary" @click="submit">提交记录</el-button>
+                        <el-button type="primary" :loading="submitting" @click="submit">
+                            {{ isEditing ? '更新今日记录' : '提交记录' }}
+                        </el-button>
                     </div>
                 </div>
             </div>
@@ -79,8 +81,8 @@
 </template>
 <script setup>
     import { dayjs, ElMessage } from 'element-plus'
-    import { ref, reactive } from 'vue'
-    import { addEmotionDiary } from '@/api/frontend'
+    import { ref, reactive, onMounted } from 'vue'
+    import { addEmotionDiary, getTodayEmotionDiary } from '@/api/frontend'
     import iconHappy from '@/assets/images/开心.png'
     import iconCalm from '@/assets/images/平静.png'
     import iconAnxious from '@/assets/images/焦虑.png'
@@ -105,6 +107,9 @@
         { name: '惊讶', url: iconSurprised },
         { name: '困惑', url: iconConfused },
     ]
+
+    const isEditing = ref(false)   // true = 今天已有记录，当前为修改模式
+    const submitting = ref(false)
 
     const selectEmotion = (emotion) => {
         diaryForm.dominantEmotion = emotion
@@ -133,16 +138,40 @@
     }
 
     const submit = () => {
-        console.log(diaryForm)
         if (!diaryForm.moodScore) {
             ElMessage.error('请选择情绪评分')
             return
         }
+        submitting.value = true
         addEmotionDiary(diaryForm).then(() => {
-            ElMessage.success('提交成功')
-            resetForm()
+            submitting.value = false
+            ElMessage.success(isEditing.value ? '今日记录已更新' : '今日情绪记录已保存')
+            isEditing.value = true
+        }).catch(() => {
+            submitting.value = false
         })
     }
+
+    // 进入页面时加载今天已有的记录（后端 saveDiary 已实现"同日覆盖更新"逻辑，
+    // 前端只需把已有记录回填，用户改完再提交自然触发 update）
+    const loadTodayRecord = () => {
+        getTodayEmotionDiary().then(record => {
+            if (!record) return
+            isEditing.value = true
+            Object.assign(diaryForm, {
+                diaryDate: record.diaryDate || dayjs().format('YYYY-MM-DD'),
+                moodScore: record.moodScore ?? null,
+                dominantEmotion: record.dominantEmotion || '',
+                emotionTriggers: record.emotionTriggers || '',
+                diaryContent: record.diaryContent || '',
+                sleepQuality: record.sleepQuality ?? null,
+                stressLevel: record.stressLevel ?? null
+            })
+            ElMessage.info('检测到您今天已有情绪记录，可继续修改')
+        }).catch(() => {})
+    }
+
+    onMounted(loadTodayRecord)
 
     const iconUrl = iconLike
 </script>

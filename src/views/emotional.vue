@@ -3,11 +3,12 @@
         <PageHead title="情绪日志" />
         <TableSearch :formItem="formItem" @search="handleSearch" />
         <el-table :data="tableData" style="width: 100%">
-            <el-table-column prop="id" label="用户ID" width="80" />
-            <el-table-column label="会话ID" width="80">
-                <template #default="scope">
-                    <el-avatar>{{ scope.row.nickname }}</el-avatar>
-                </template>
+            <el-table-column prop="userId" label="用户ID" width="90" />
+            <el-table-column prop="username" label="用户名" width="120">
+                <template #default="scope">{{ scope.row.username || '-' }}</template>
+            </el-table-column>
+            <el-table-column prop="nickname" label="昵称" width="120">
+                <template #default="scope">{{ scope.row.nickname || '-' }}</template>
             </el-table-column>
             <el-table-column prop="diaryDate" label="记录日期" width="120" />
             <el-table-column label="情绪评分">
@@ -181,7 +182,9 @@ const getRiskLevelText = (riskLevel) => {
 }
 
 const formItem = [
-    { comp: 'input', prop: 'userId', label: '用户ID', placeholder: '请输入用户ID' },
+    { comp: 'input', prop: 'userId', label: '用户ID', placeholder: '请输入用户ID（精确）' },
+    { comp: 'input', prop: 'username', label: '用户名', placeholder: '用户名/昵称模糊搜索' },
+    { comp: 'daterange', prop: 'diaryDateRange', label: '记录日期', placeholder: '选择日期范围' },
     {
         comp: 'select', prop: 'moodScoreRange', label: '情绪评分', placeholder: '请选择评分范围', options: [{
             label: '低分（1-3）',
@@ -216,6 +219,16 @@ const handleSearch = async (formData) => {
         ...pagination,
         ...formData
     }
+    // daterange 组件返回 [start, end] 数组，拆成后端需要的两个字段
+    if (Array.isArray(params.diaryDateRange) && params.diaryDateRange.length === 2) {
+        params.diaryDateStart = params.diaryDateRange[0]
+        params.diaryDateEnd = params.diaryDateRange[1]
+        delete params.diaryDateRange
+    } else {
+        delete params.diaryDateRange
+    }
+    // 过滤空值
+    Object.keys(params).forEach(k => { if (params[k] === '' || params[k] === null || params[k] === undefined) delete params[k] })
 
     const { records, total } = await getEmotionalPage(params)
     tableData.value = records

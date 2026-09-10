@@ -178,29 +178,31 @@ const toolbarConfig = reactive({
 // 方法
 const handleEditorCreated = (editor) => {
   editorRef.value = editor
-  
+
   // 初始化字数统计
   updateCharCount()
-  
-  // 调试信息 - 检查字体配置
-  console.log('编辑器实例:', editor)
-  console.log('工具栏配置:', editor.getConfig())
-  
-  // 检查字体菜单
-  const menus = editor.getAllMenuKeys()
-  console.log('所有可用菜单:', menus)
-  
-  if (menus.includes('fontFamily')) {
-    console.log('字体菜单已启用')
-  } else {
-    console.warn('字体菜单未启用')
+
+  // 编辑器创建后，若外部已传入内容，立即回填（覆盖创建竞态）
+  if (props.modelValue) {
+    editor.setHtml(props.modelValue)
   }
-  
+
   // 触发创建事件
   emit('created', editor)
-  
+
   console.log('富文本编辑器已创建')
 }
+
+// 外部 modelValue 变化时同步到编辑器（编辑回填/重置场景）。
+// 用户输入触发的回写与 editor.getHtml() 一致，不会重复 setHtml、不会打断光标。
+watch(() => props.modelValue, (newVal) => {
+  const editor = editorRef.value
+  if (!editor) return
+  if (newVal !== editor.getHtml()) {
+    editor.setHtml(newVal || '')
+    updateCharCount()
+  }
+})
 
 const handleEditorChange = (editor) => {
   updateCharCount()

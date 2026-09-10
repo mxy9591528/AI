@@ -16,10 +16,11 @@
              <div class="emotion-garden">
                 <div class="garden-header">
                     <div class="garden-title"> 情绪花园 </div>
+                    <div class="garden-subtitle">{{ currentEmotion.dataSource || '综合日记与对话动态评分' }}</div>
                 </div>
                 <div class="emotion-info">
-                    <div class="emotion-name">中性</div>
-                    <div class="emotion-score">50</div>
+                    <div class="emotion-name">{{ currentEmotion.primaryEmotion }}</div>
+                    <div class="emotion-score">{{ currentEmotion.emotionScore }}</div>
                 </div>
                 <div class="warm-tips">
                     <div class="emotion-status-text">
@@ -219,7 +220,7 @@
 </template>
 <script setup>
 import {nextTick, onMounted, ref} from 'vue'
-import {deleteSession, getSessionDetail, getSessionEmotion, getSessionList, startSession} from '@/api/frontend'
+import {deleteSession, getEmotionGarden, getSessionDetail, getSessionList, startSession} from '@/api/frontend'
 import {getAiProvider, switchAiProvider} from '@/api/admin'
 import {ElMessage} from 'element-plus'
 import {ChatRound, Clock, DeleteFilled, Plus, Promotion} from '@element-plus/icons-vue'
@@ -296,17 +297,26 @@ const currentEmotion = ref({
     isNegative: false,
     riskLevel: 0,
     suggestion: '情绪状态平稳',
-    improvementSuggestions: []
+    improvementSuggestions: [],
+    dataSource: '综合日记与对话动态评分'
 })
 
-const loadSessionEmotion = (sessionId) => {
-   // 确保sessionID格式正确
-    const id = sessionId.toString().startsWith('session_') ? sessionId : `session_${sessionId}`
-
-    getSessionEmotion(id).then(res => {
-        console.log(res)
-        currentEmotion.value = res
-    })
+// 加载情绪花园动态评分（后端综合近14天情绪日记 + AI咨询对话内容计算）
+const loadEmotionGarden = () => {
+    getEmotionGarden().then(res => {
+        if (res) {
+            currentEmotion.value = {
+                primaryEmotion: res.primaryEmotion || '中性',
+                emotionScore: res.emotionScore ?? 50,
+                isNegative: !!res.isNegative,
+                riskLevel: res.riskLevel ?? 0,
+                suggestion: res.suggestion || '',
+                riskDescription: res.riskDescription || '',
+                improvementSuggestions: res.improvementSuggestions || [],
+                dataSource: res.dataSource || '综合日记与对话动态评分'
+            }
+        }
+    }).catch(() => {})
 }
 
 const getIntensityClass = (score) => {
@@ -486,8 +496,8 @@ const startAIResponse = (sessionId, userMessage) => {
                 isAiTyping.value = false
                 clearTimeout(timeoutId)
                 ctrl.abort()
-                // 进行情绪分析
-                loadSessionEmotion(currentSession.value.sessionId)
+                // 对话完成后刷新情绪花园评分
+                loadEmotionGarden()
                 return
             }
             const payload = JSON.parse(raw)
@@ -508,8 +518,8 @@ const startAIResponse = (sessionId, userMessage) => {
         onclose: () => {
             clearTimeout(timeoutId)
             isAiTyping.value = false
-            // 开始情绪分析
-            loadSessionEmotion(currentSession.value.sessionId)
+            // 对话结束后刷新情绪花园评分
+            loadEmotionGarden()
         }
     })
 
@@ -544,7 +554,8 @@ const handleSessionClick = (session) => {
         console.log(res)
         messages.value = res
     })
-    loadSessionEmotion(session.id)
+    // 刷新情绪花园动态评分
+    loadEmotionGarden()
     // 更新当前会话对象数据
   currentSession.value = {
       sessionId: "session_" + session.id,
@@ -572,6 +583,8 @@ onMounted(() => {
     loadAiProvider()
     // 初始化时创建一个新会话
     createNewFrontendSession()
+    // 初始化时加载情绪花园动态评分
+    loadEmotionGarden()
 })
 </script>
 <style scoped lang="scss">
@@ -586,7 +599,9 @@ $ai-bubble: #ffffff;
 .consultation-container {
     width: 100%;
     max-width: 1400px;
-    min-height: calc(100vh - 140px);
+    /* 固定一屏高度，让内部滚动条生效，而不是页面整体变长 */
+    height: calc(100vh - 120px);
+    overflow: hidden;
     display: flex;
     gap: 20px;
     padding: 20px;
@@ -599,6 +614,8 @@ $ai-bubble: #ffffff;
         display: flex;
         flex-direction: column;
         gap: 16px;
+        /* 关键：允许 Flex 子项在列方向收缩，否则内容会把容器撑爆 */
+        min-height: 0;
 
         /* AI 助手卡片 */
         .ai-assistant-info {
@@ -663,6 +680,13 @@ $ai-bubble: #ffffff;
                     font-size: 15px;
                     font-weight: 600;
                     color: $brand-dark;
+                }
+                .garden-subtitle {
+                    font-size: 11px;
+                    color: #6b8e88;
+                    max-width: 170px;
+                    text-align: right;
+                    line-height: 1.3;
                 }
             }
             .emotion-info {
@@ -746,13 +770,14 @@ $ai-bubble: #ffffff;
             flex: 1;
             display: flex;
             flex-direction: column;
-            min-height: 200px;
+            /* 最小 180px：保证至少能看见 2-3 条会话，emotion-garden 不会把它完全挤没 */
+            min-height: 180px;
 
             .section-title {
                 font-size: 15px; font-weight: 600; color: #1f5d54; margin: 0 0 12px;
             }
             .session-list {
-                overflow-y: auto; flex: 1;
+                overflow-y: auto; flex: 1; min-height: 0;
                 scrollbar-width: thin; scrollbar-color: $brand-light transparent;
                 .session-item {
                     padding: 10px 12px; border-radius: 12px; cursor: pointer;
@@ -782,7 +807,8 @@ $ai-bubble: #ffffff;
         display: flex;
         flex-direction: column;
         overflow: hidden;
-        min-height: calc(100vh - 180px);
+        height: 100%;      /* 撑满父容器固定高度 */
+        min-height: 0;     /* Flex 子项允许收缩，给 chat-messages 留出生效空间 */
 
         .chat-header {
             background: $user-bubble;
@@ -811,6 +837,7 @@ $ai-bubble: #ffffff;
 
         .chat-messages {
             flex: 1;
+            min-height: 0;       /* 关键！Flex 子项默认 min-height:auto 会阻止收缩，加上后 overflow-y 才能生效 */
             overflow-y: auto;
             padding: 24px;
             display: flex;

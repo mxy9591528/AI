@@ -37,9 +37,9 @@ export function updateArticle(id, data) {
     return request({ url: `/api/knowledge/article/${id}`, method: 'put', data })
 }
 
-// 修改文章状态
-export function changeArticleStatus(id, status) {
-    return request({ url: `/api/knowledge/article/${id}/status`, method: 'put', data: { status } })
+// 修改文章状态（data 为 { status: 1 } 结构，直接作为请求体，避免双层包装）
+export function changeArticleStatus(id, data) {
+    return request({ url: `/api/knowledge/article/${id}/status`, method: 'put', data })
 }
 
 // 删除文章
@@ -48,13 +48,18 @@ export function deleteArticle(id) {
 }
 
 // ========== 文件 ==========
-// 文件上传
-export function uploadFile(formData) {
+// 文件上传（FormData 由本函数构造；不要手动设置 Content-Type，
+// 浏览器会自动追加 multipart boundary，否则后端报 no multipart boundary）
+export function uploadFile(file, businessInfo) {
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('businessType', 'ARTICLE')
+    formData.append('businessId', businessInfo?.businessId ?? '')
+    formData.append('businessField', 'cover')
     return request({
         url: '/api/file/upload',
         method: 'post',
-        data: formData,
-        headers: { 'Content-Type': 'multipart/form-data' }
+        data: formData
     })
 }
 
@@ -65,7 +70,7 @@ export function getAnalyticsOverview() {
 }
 
 // ========== 咨询记录 ==========
-// 咨询会话分页
+// 咨询会话分页（支持管理员按 userId / username 搜索）
 export function getConsultationPage(params) {
     return request({ url: '/api/psychological-chat/sessions', method: 'get', params })
 }
@@ -73,6 +78,11 @@ export function getConsultationPage(params) {
 // 会话消息详情
 export function getSessionDetail(id) {
     return request({ url: `/api/psychological-chat/sessions/${id}/messages`, method: 'get' })
+}
+
+// 删除咨询会话（级联删除其所有消息）
+export function deleteSession(id) {
+    return request({ url: `/api/psychological-chat/sessions/${id}`, method: 'delete' })
 }
 
 // ========== 情绪日记 ==========

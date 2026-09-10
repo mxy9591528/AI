@@ -25,6 +25,16 @@
                     :value="opt.value"
                 />
             </el-select>
+            <el-date-picker
+                v-else-if="item.comp === 'daterange'"
+                v-model="formData[item.prop]"
+                type="daterange"
+                range-separator="至"
+                start-placeholder="开始日期"
+                end-placeholder="结束日期"
+                value-format="YYYY-MM-DD"
+                style="width: 260px"
+            />
         </el-form-item>
         <el-form-item>
             <el-button type="primary" @click="handleSearch">查询</el-button>
